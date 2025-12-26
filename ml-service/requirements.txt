@@ -1,0 +1,9 @@
+gunicorn==21.2.0
+flower
+numpy==1.26.4
+opencv-python==4.9.0.80
+pillow==10.3.0
+psycopg2-binary==2.9.9
+pytest==7.2.0
+ultralytics
+nats-py==2.6.0

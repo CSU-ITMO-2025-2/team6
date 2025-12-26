@@ -1,0 +1,82 @@
+syntax = "proto3";
+
+package study.v1;
+
+option go_package = "github.com/imgrigorev/agrolab/study-service/pkg/study_v1;study_v1";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+service StudyService {
+	rpc CreateStudy(CreateStudyRequest) returns (CreateStudyResponse);
+	rpc GetStudy(GetStudyRequest) returns (GetStudyResponse);
+	rpc UpdateStudyInfo(UpdateStudyInfoRequest) returns (UpdateStudyInfoResponse);
+	rpc ListStudies(ListStudiesRequest) returns (ListStudiesResponse);
+}
+
+message Image {
+	bytes chunk_data = 1;
+	string file_name = 2;
+	string mime_type = 3;
+}
+
+message StudyInfo {
+	bytes study_id = 1;
+	optional string study_name = 2;
+	string status = 3;
+	bytes owner_id = 4;
+	optional string image_url = 5;
+	optional string predicted_class = 6;
+	optional float predicted_class_score = 7;
+	optional string error_description = 8;
+	google.protobuf.Timestamp created_at = 9;
+	google.protobuf.Timestamp updated_at = 10;
+}
+
+//enum StudyStatus {
+//	STUDY_STATUS_UNSPECIFIED = 0;
+//	STUDY_STATUS_PENDING = 1;
+//	STUDY_STATUS_IN_PROGRESS = 2;
+//	STUDY_STATUS_COMPLETED = 3;
+//	STUDY_STATUS_FAILED = 4;
+//}
+
+message CreateStudyRequest {
+	Image image = 1;
+	bytes user_id = 2;
+}
+
+message CreateStudyResponse {
+	bytes study_id = 1;
+}
+
+message GetStudyRequest {
+	bytes study_id = 1;
+}
+
+message GetStudyResponse {
+	StudyInfo study = 1;
+}
+
+message UpdateStudyInfoRequest {
+	bytes study_id = 1;
+	google.protobuf.StringValue study_name = 2;
+	google.protobuf.StringValue predicted_class = 3;
+	google.protobuf.FloatValue predicted_class_score = 4;
+}
+
+message UpdateStudyInfoResponse {
+	StudyInfo study = 1;
+}
+
+message ListStudiesRequest {
+	bytes filter_study_id = 1;
+	bytes filter_user_id = 2;
+	int32 limit = 3;
+	int32 offset = 4;
+}
+
+message ListStudiesResponse {
+	repeated StudyInfo studies = 1;
+	int32 total_count = 2;
+}
