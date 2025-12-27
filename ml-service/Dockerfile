@@ -46,8 +46,6 @@ RUN mkdir -p model logs
 
 RUN pip install --upgrade pip
 
-#RUN apt-get update
-
 # Обновляем и устанавливаем системные зависимости
 RUN apt-get update && apt-get install -y \
     gcc \

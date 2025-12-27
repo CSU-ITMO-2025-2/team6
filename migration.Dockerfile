@@ -1,5 +1,5 @@
 FROM alpine:3.13
-
+# TODO посмотреть нужно ли все это, кажется зря утяжеляем образ
 RUN apk update && \
     apk upgrade && \
     apk add --no-cache bash curl postgresql-client && \
@@ -14,7 +14,7 @@ WORKDIR /root
 # Копируем миграции и скрипты
 COPY migrations/*.sql ./migrations/
 COPY migration.sh .
-COPY .env .
+#COPY .env .
 
 RUN chmod +x migration.sh
 
