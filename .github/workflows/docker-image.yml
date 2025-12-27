@@ -1,69 +1,112 @@
-#name: CI
+#name: Build and Push
 #
 #on:
 #  push:
 #    branches: [ "main" ]
+#    paths:
+#      - "main-service/**"
+#      - "study-service/**"
+#      - "ml-service/**"
 #  pull_request:
 #    branches: [ "main" ]
+#    paths:
+#      - "main-service/**"
+#      - "study-service/**"
+#      - "ml-service/**"
+#
 #
 #jobs:
-#  build-and-test:
+#  build:
 #    runs-on: ubuntu-latest
-#
-#    services:
-#      docker:
-#        image: docker:24-dind
-#        options: --privileged
+#    permissions:
+#      contents: read
+#      packages: write
+#    outputs:
+#      image_tag: ${{ steps.settag.outputs.image_tag }}
 #
 #    steps:
 #      - name: Checkout
 #        uses: actions/checkout@v4
 #
+#      - name: Derive image tag
+#        id: settag
+#        run: echo "image_tag=sha-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+#
+#      - name: Derive lowercase owner
+#        id: setowner
+#        run: echo "owner_lc=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+#
 #      - name: Set up Docker
 #        uses: docker/setup-buildx-action@v3
 #
-#      - name: Build services
-#        run: docker compose build
+#      - name: Login to GitHub Container Registry
+#        uses: docker/login-action@v3
+#        with:
+#          registry: ghcr.io
+#          username: ${{ github.actor }}
+#          password: ${{ secrets.GITHUB_TOKEN }}
 #
-#      - name: Start infrastructure
-#        run: docker compose up -d db minio nats
-#
-#      - name: Wait for DB
+#      - name: Build and push main-service
 #        run: |
-#          until docker compose exec -T db pg_isready -U postgres; do
-#            sleep 2
-#          done
+#          docker build -t ghcr.io/${{ github.repository_owner }}/main-service:${{ github.sha }} -f main-service/Dockerfile .
+#          docker push ghcr.io/${{ github.repository_owner }}/main-service:${{ github.sha }}
 #
-#      - name: Run migrations
-#        run: docker compose up migrator
+#      - name: Build and push study-service
+#        run: |
+#          docker build -t ghcr.io/${{ github.repository_owner }}/study-service:${{ github.sha }} -f study-service/Dockerfile ./study-service
+#          docker push ghcr.io/${{ github.repository_owner }}/study-service:${{ github.sha }}
 #
-#      - name: Start services
-#        run: docker compose up -d
-#
-#      # ======= Go tests (пример) =======
-##      - name: Run study-service tests
-##        run: |
-##          docker compose exec -T study-service go test ./...
-##
-##      - name: Run main-service tests
-##        run: |
-##          docker compose exec -T main-service go test ./...
+#      - name: Build and push migrator
+#        run: |
+#          docker build -t ghcr.io/${{ github.repository_owner }}/migrator:${{ github.sha }} -f migrator/Dockerfile ./migrator
+#          docker push ghcr.io/${{ github.repository_owner }}/migrator:${{ github.sha }}
 
 name: Build and Push
 
 on:
   push:
     branches: [ "main" ]
+    paths:
+      - "**"
   pull_request:
     branches: [ "main" ]
+    paths:
+      - "**"
 
 jobs:
-  build:
+  build-services:
     runs-on: ubuntu-latest
-
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        service:
+          - name: main-service
+            context: .
+            dockerfile: ./main-service/Dockerfile
+          - name: study-service
+            context: ./study-service
+            dockerfile: ./study-service/Dockerfile
+          - name: ml-service
+            context: ./ml-service
+            dockerfile: ./ml-service/Dockerfile
+          - name: migrator
+            context: ./migrator
+            dockerfile: ./migrator/Dockerfile
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Derive image tag
+        id: settag
+        run: echo "image_tag=sha-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - name: Derive lowercase owner
+        id: setowner
+        run: echo "owner_lc=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker
         uses: docker/setup-buildx-action@v3
@@ -75,17 +118,18 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push main-service
-        run: |
-          docker build -t ghcr.io/${{ github.repository_owner }}/main-service:${{ github.sha }} -f main-service/Dockerfile .
-          docker push ghcr.io/${{ github.repository_owner }}/main-service:${{ github.sha }}
-
-      - name: Build and push study-service
-        run: |
-          docker build -t ghcr.io/${{ github.repository_owner }}/study-service:${{ github.sha }} -f study-service/Dockerfile ./study-service
-          docker push ghcr.io/${{ github.repository_owner }}/study-service:${{ github.sha }}
-
-      - name: Build and push migrator
-        run: |
-          docker build -t ghcr.io/${{ github.repository_owner }}/migrator:${{ github.sha }} -f migrator/Dockerfile ./migrator
-          docker push ghcr.io/${{ github.repository_owner }}/migrator:${{ github.sha }}
+      - name: Build and push ${{ matrix.service.name }}
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.service.context }}
+          file: ${{ matrix.service.dockerfile }}
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: |
+            ghcr.io/${{ steps.setowner.outputs.owner_lc }}/${{ matrix.service.name }}:${{ steps.settag.outputs.image_tag }}
+            ghcr.io/${{ steps.setowner.outputs.owner_lc }}/${{ matrix.service.name }}:latest
+          labels: |
+            org.opencontainers.image.source=${{ github.repositoryUrl }}
+            org.opencontainers.image.version=${{ steps.settag.outputs.image_tag }}
+            org.opencontainers.image.created=${{ github.event.head_commit.timestamp }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
