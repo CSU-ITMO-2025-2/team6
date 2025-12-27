@@ -8,6 +8,8 @@ import (
 
 	"main-service/internal/closer"
 	"main-service/internal/config"
+
+	"github.com/go-chi/chi/v5"
 )
 
 type App struct {

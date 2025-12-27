@@ -35,6 +35,6 @@ func ObjectNotExists() error {
 		httpStatus: http.StatusNotFound,
 		code:       "OBJECT_NOT_EXISTS",
 		message:    "Object Not Exists",
-		err:        cause,
+		err:        nil, //FIXME
 	}
 }
