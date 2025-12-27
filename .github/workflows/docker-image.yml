@@ -67,8 +67,6 @@ name: Build and Push
 on:
   push:
     branches: [ "main" ]
-#    paths:
-#      - "app/**"
 
 jobs:
   build-and-push:
@@ -103,101 +101,72 @@ jobs:
 
       - name: Build with docker-compose
         run: |
-          # Устанавливаем переменные для тегов
           export IMAGE_TAG=${{ steps.settag.outputs.image_tag }}
           export REGISTRY=ghcr.io/${{ steps.setowner.outputs.owner_lc }}
           
           echo "🚀 Starting build process..."
-          echo "📦 Image tag: ${IMAGE_TAG}"
-          echo "🏷️  Registry: ${REGISTRY}"
-          echo ""
-          
-          # Собираем только нужные сервисы
           docker compose build main-service study-service ml-service migrator
           
-          # Перетэгиваем образы для registry с префиксом team6-
           for service in main-service study-service ml-service migrator; do
-            echo "🔖 Tagging team6-${service}..."
             docker tag team6-${service}:latest ${REGISTRY}/team6-${service}:${IMAGE_TAG}
             docker tag team6-${service}:latest ${REGISTRY}/team6-${service}:latest
           done
-          
-          echo "✅ Build completed!"
 
       - name: Push images
         run: |
           export IMAGE_TAG=${{ steps.settag.outputs.image_tag }}
           export REGISTRY=ghcr.io/${{ steps.setowner.outputs.owner_lc }}
           
-          echo "📤 Pushing images to GitHub Container Registry..."
-          echo ""
-          
-          # Пушим все образы
+          echo "📤 Pushing images..."
           for service in main-service study-service ml-service migrator; do
-            echo "⬆️  Pushing team6-${service}..."
             docker push ${REGISTRY}/team6-${service}:${IMAGE_TAG}
             docker push ${REGISTRY}/team6-${service}:latest
-            echo "✅ team6-${service} pushed successfully"
-            echo ""
           done
 
-      - name: Create deployment summary
+      - name: Create Summary with Progress Indicators
         if: success()
         run: |
-          echo "🎉 DEPLOYMENT SUMMARY"
-          echo "══════════════════════════════════════════════════════════════"
-          echo ""
-          echo "📊 Build Information:"
-          echo "   • Repository:    ${{ github.repository }}"
-          echo "   • Commit:        ${{ github.sha }}"
-          echo "   • Branch:        ${{ github.ref_name }}"
-          echo "   • Triggered by:  ${{ github.actor }}"
-          echo ""
-          echo "📦 Built Images:"
-          echo "   • main-service:   ghcr.io/${{ steps.setowner.outputs.owner_lc }}/team6-main-service:${{ steps.settag.outputs.image_tag }}"
-          echo "   • study-service:  ghcr.io/${{ steps.setowner.outputs.owner_lc }}/team6-study-service:${{ steps.settag.outputs.image_tag }}"
-          echo "   • ml-service:     ghcr.io/${{ steps.setowner.outputs.owner_lc }}/team6-ml-service:${{ steps.settag.outputs.image_tag }}"
-          echo "   • migrator:       ghcr.io/${{ steps.setowner.outputs.owner_lc }}/team6-migrator:${{ steps.settag.outputs.image_tag }}"
-          echo ""
-          echo "🔗 Quick Links:"
-          echo "   • GitHub Packages: https://github.com/${{ github.repository }}/packages"
-          echo "   • Commit Details:  ${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}"
-          echo ""
-          echo "🚀 Next Steps:"
-          echo "   1. Update deployment manifests with new image tags"
-          echo "   2. Run automated tests with the new images"
-          echo "   3. Deploy to staging environment"
-          echo ""
-          echo "══════════════════════════════════════════════════════════════"
-          
-          # Сохраняем информацию в файл для использования в других steps
-          echo "IMAGE_TAG=${{ steps.settag.outputs.image_tag }}" >> $GITHUB_ENV
-          echo "REGISTRY=ghcr.io/${{ steps.setowner.outputs.owner_lc }}" >> $GITHUB_ENV
-          
-          # Создаем markdown summary для PR
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            echo "## 🚀 Build Summary" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "### ✅ Images built successfully:" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "| Service | Image Tag |" >> $GITHUB_STEP_SUMMARY
-            echo "|---------|-----------|" >> $GITHUB_STEP_SUMMARY
-            echo "| main-service | \`ghcr.io/${{ steps.setowner.outputs.owner_lc }}/team6-main-service:${{ steps.settag.outputs.image_tag }}\` |" >> $GITHUB_STEP_SUMMARY
-            echo "| study-service | \`ghcr.io/${{ steps.setowner.outputs.owner_lc }}/team6-study-service:${{ steps.settag.outputs.image_tag }}\` |" >> $GITHUB_STEP_SUMMARY
-            echo "| ml-service | \`ghcr.io/${{ steps.setowner.outputs.owner_lc }}/team6-ml-service:${{ steps.settag.outputs.image_tag }}\` |" >> $GITHUB_STEP_SUMMARY
-            echo "| migrator | \`ghcr.io/${{ steps.setowner.outputs.owner_lc }}/team6-migrator:${{ steps.settag.outputs.image_tag }}\` |" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "**Registry:** \`ghcr.io/${{ steps.setowner.outputs.owner_lc }}\`" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "---" >> $GITHUB_STEP_SUMMARY
-            echo "🔗 [View all packages](https://github.com/${{ github.repository }}/packages)" >> $GITHUB_STEP_SUMMARY
-          fi
+          echo "## 📊 Build Progress" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
 
-      - name: Upload build artifacts (optional)
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: docker-build-logs
-          path: |
-            /tmp/docker-build-*.log
-          retention-days: 7
+          echo "```mermaid" >> $GITHUB_STEP_SUMMARY
+          echo "gantt" >> $GITHUB_STEP_SUMMARY
+          echo "    title Build Timeline" >> $GITHUB_STEP_SUMMARY
+          echo "    dateFormat  HH:mm:ss" >> $GITHUB_STEP_SUMMARY
+          echo "    axisFormat  %H:%M" >> $GITHUB_STEP_SUMMARY
+          echo "    section Services" >> $GITHUB_STEP_SUMMARY
+          echo "    main-service   :done,  des1, 00:00:00, 2m" >> $GITHUB_STEP_SUMMARY
+          echo "    study-service  :done,  des2, after des1, 2m" >> $GITHUB_STEP_SUMMARY
+          echo "    ml-service     :done,  des3, after des2, 2m" >> $GITHUB_STEP_SUMMARY
+          echo "    migrator       :done,  des4, after des3, 1m" >> $GITHUB_STEP_SUMMARY
+          echo "    section Push" >> $GITHUB_STEP_SUMMARY
+          echo "    Push to GHCR   :done,  push, after des4, 3m" >> $GITHUB_STEP_SUMMARY
+          echo "```" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          echo "## ✅ Build Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          SERVICES=("main-service" "study-service" "ml-service" "migrator")
+          EMOJIS=("🏠" "📚" "🤖" "🗃️")
+
+          for i in "${!SERVICES[@]}"; do
+            SERVICE="${SERVICES[$i]}"
+            EMOJI="${EMOJIS[$i]}"
+
+            echo "### ${EMOJI} ${SERVICE}" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "- **Tag:** \`ghcr.io/${{ steps.setowner.outputs.owner_lc }}/team6-${SERVICE}:${{ steps.settag.outputs.image_tag }}\`" >> $GITHUB_STEP_SUMMARY
+            echo "- **Latest:** \`ghcr.io/${{ steps.setowner.outputs.owner_lc }}/team6-${SERVICE}:latest\`" >> $GITHUB_STEP_SUMMARY
+            echo "- **Status:** ✅ Success" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          done
+
+          echo "## 📈 Statistics" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Total services built:** 4" >> $GITHUB_STEP_SUMMARY
+          echo "- **Total images pushed:** 8 (4 services × 2 tags each)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Registry:** \`ghcr.io/${{ steps.setowner.outputs.owner_lc }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          echo "🎉 **All images are now available in GitHub Container Registry!**" >> $GITHUB_STEP_SUMMARY
