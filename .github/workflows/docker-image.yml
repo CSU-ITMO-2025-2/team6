@@ -1,77 +1,7 @@
-#name: Build and Push
-#
-#on:
-#  push:
-#    branches: [ "main" ]
-#    paths:
-#      - "main-service/**"
-#      - "study-service/**"
-#      - "ml-service/**"
-#  pull_request:
-#    branches: [ "main" ]
-#    paths:
-#      - "main-service/**"
-#      - "study-service/**"
-#      - "ml-service/**"
-#
-#
-#jobs:
-#  build:
-#    runs-on: ubuntu-latest
-#    permissions:
-#      contents: read
-#      packages: write
-#    outputs:
-#      image_tag: ${{ steps.settag.outputs.image_tag }}
-#
-#    steps:
-#      - name: Checkout
-#        uses: actions/checkout@v4
-#
-#      - name: Derive image tag
-#        id: settag
-#        run: echo "image_tag=sha-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
-#
-#      - name: Derive lowercase owner
-#        id: setowner
-#        run: echo "owner_lc=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
-#
-#      - name: Set up Docker
-#        uses: docker/setup-buildx-action@v3
-#
-#      - name: Login to GitHub Container Registry
-#        uses: docker/login-action@v3
-#        with:
-#          registry: ghcr.io
-#          username: ${{ github.actor }}
-#          password: ${{ secrets.GITHUB_TOKEN }}
-#
-#      - name: Build and push main-service
-#        run: |
-#          docker build -t ghcr.io/${{ github.repository_owner }}/main-service:${{ github.sha }} -f main-service/Dockerfile .
-#          docker push ghcr.io/${{ github.repository_owner }}/main-service:${{ github.sha }}
-#
-#      - name: Build and push study-service
-#        run: |
-#          docker build -t ghcr.io/${{ github.repository_owner }}/study-service:${{ github.sha }} -f study-service/Dockerfile ./study-service
-#          docker push ghcr.io/${{ github.repository_owner }}/study-service:${{ github.sha }}
-#
-#      - name: Build and push migrator
-#        run: |
-#          docker build -t ghcr.io/${{ github.repository_owner }}/migrator:${{ github.sha }} -f migrator/Dockerfile ./migrator
-#          docker push ghcr.io/${{ github.repository_owner }}/migrator:${{ github.sha }}
-
-
 name: Build and Push
 on:
   push:
     branches: [ "main" ]
-#    paths:
-#      - "main-service/**"
-#      - "study-service/**"
-#      - "ml-service/**"
-#      - "migrator/**"
-#      - "local-lib/**"
 
 jobs:
   build-and-push:
@@ -113,10 +43,10 @@ jobs:
           # Собираем только нужные сервисы
           docker compose build main-service study-service ml-service migrator
           
-          # Перетэгиваем образы для registry
+          # Перетэгиваем образы для registry с префиксом team6-
           for service in main-service study-service ml-service migrator; do
-            docker tag team6-${service}:latest ${REGISTRY}/${service}:${IMAGE_TAG}
-            docker tag team6-${service}:latest ${REGISTRY}/${service}:latest
+            docker tag team6-${service}:latest ${REGISTRY}/team6-${service}:${IMAGE_TAG}
+            docker tag team6-${service}:latest ${REGISTRY}/team6-${service}:latest
           done
 
       - name: Push images
@@ -126,7 +56,7 @@ jobs:
           
           # Пушим все образы
           for service in main-service study-service ml-service migrator; do
-            echo "Pushing ${service}..."
-            docker push ${REGISTRY}/${service}:${IMAGE_TAG}
-            docker push ${REGISTRY}/${service}:latest
+            echo "Pushing team6-${service}..."
+            docker push ${REGISTRY}/team6-${service}:${IMAGE_TAG}
+            docker push ${REGISTRY}/team6-${service}:latest
           done
