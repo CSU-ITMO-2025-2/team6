@@ -61,39 +61,26 @@
 #          docker build -t ghcr.io/${{ github.repository_owner }}/migrator:${{ github.sha }} -f migrator/Dockerfile ./migrator
 #          docker push ghcr.io/${{ github.repository_owner }}/migrator:${{ github.sha }}
 
+
 name: Build and Push
 
 on:
   push:
     branches: [ "main" ]
     paths:
-      - "**"
-  pull_request:
-    branches: [ "main" ]
-    paths:
-      - "**"
+      - "main-service/**"
+      - "study-service/**"
+      - "ml-service/**"
+      - "migrator/**"
+      - "local-lib/**"
 
 jobs:
-  build-services:
+  build-and-push:
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
-    strategy:
-      matrix:
-        service:
-          - name: main-service
-            context: .
-            dockerfile: ./main-service/Dockerfile
-          - name: study-service
-            context: ./study-service
-            dockerfile: ./study-service/Dockerfile
-          - name: ml-service
-            context: ./ml-service
-            dockerfile: ./ml-service/Dockerfile
-#          - name: migrator
-#            context: ./migrator
-#            dockerfile: ./migrator/Dockerfile
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -118,18 +105,29 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push ${{ matrix.service.name }}
-        uses: docker/build-push-action@v6
-        with:
-          context: ${{ matrix.service.context }}
-          file: ${{ matrix.service.dockerfile }}
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: |
-            ghcr.io/${{ steps.setowner.outputs.owner_lc }}/${{ matrix.service.name }}:${{ steps.settag.outputs.image_tag }}
-            ghcr.io/${{ steps.setowner.outputs.owner_lc }}/${{ matrix.service.name }}:latest
-          labels: |
-            org.opencontainers.image.source=${{ github.repositoryUrl }}
-            org.opencontainers.image.version=${{ steps.settag.outputs.image_tag }}
-            org.opencontainers.image.created=${{ github.event.head_commit.timestamp }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+      - name: Build with docker-compose
+        run: |
+          # Устанавливаем переменные для тегов
+          export IMAGE_TAG=${{ steps.settag.outputs.image_tag }}
+          export REGISTRY=ghcr.io/${{ steps.setowner.outputs.owner_lc }}
+          
+          # Собираем только нужные сервисы
+          docker compose build main-service study-service ml-service migrator
+          
+          # Перетэгиваем образы для registry
+          for service in main-service study-service ml-service migrator; do
+            docker tag team6-${service}:latest ${REGISTRY}/${service}:${IMAGE_TAG}
+            docker tag team6-${service}:latest ${REGISTRY}/${service}:latest
+          done
+
+      - name: Push images
+        run: |
+          export IMAGE_TAG=${{ steps.settag.outputs.image_tag }}
+          export REGISTRY=ghcr.io/${{ steps.setowner.outputs.owner_lc }}
+          
+          # Пушим все образы
+          for service in main-service study-service ml-service migrator; do
+            echo "Pushing ${service}..."
+            docker push ${REGISTRY}/${service}:${IMAGE_TAG}
+            docker push ${REGISTRY}/${service}:latest
+          done
