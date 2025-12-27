@@ -66,12 +66,12 @@ name: Build and Push
 on:
   push:
     branches: [ "main" ]
-    paths:
-      - "main-service/**"
-      - "study-service/**"
-      - "ml-service/**"
-      - "migrator/**"
-      - "local-lib/**"
+#    paths:
+#      - "main-service/**"
+#      - "study-service/**"
+#      - "ml-service/**"
+#      - "migrator/**"
+#      - "local-lib/**"
 
 jobs:
   build-and-push:
