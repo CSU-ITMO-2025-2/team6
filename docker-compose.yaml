@@ -64,11 +64,11 @@ services:
       - agro-lab-network
     command: [ "-c", "/etc/nats/server.conf" ]
 
-  image-analysis-service:
+  ml-service:
     build:
       context: ./ml-service
       dockerfile: Dockerfile
-    container_name: image-analysis-service
+    container_name: ml-service
     depends_on:
       - nats
     environment:
