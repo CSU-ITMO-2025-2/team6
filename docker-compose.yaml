@@ -1,7 +1,7 @@
 services:
   db:
     image: postgres:15.4-alpine
-    container_name: agro_lab-db
+    container_name: agro_lab_db
     env_file:
       - .env
     ports:
@@ -30,13 +30,13 @@ services:
       - agro-lab-network
 
   minio:
-    container_name: minio
+    container_name: agro_lab_minio
     image: 'minio/minio:latest'
     volumes:
       - 'minio_data:/data'
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - 9000:9000
+      - 9001:9001
     restart: unless-stopped
     command: server --console-address ":9001" /data
     env_file:
@@ -54,6 +54,7 @@ services:
 
   nats:
     image: nats:latest
+    container_name: agro_lab_nats
     ports:
       - 4222:4222
       - 8222:8222
@@ -87,6 +88,28 @@ services:
         reservations:
           cpus: '1'
           memory: 2G
+
+  study-service:
+    build:
+      context: ./
+      dockerfile: ./study-service/Dockerfile
+    env_file:
+      - ./study-service/.env
+    ports:
+      - 8083:5000
+    networks:
+      - agro-lab-network
+
+  main-service:
+    build:
+      context: ./
+      dockerfile: ./main-service/Dockerfile
+    env_file:
+      - ./main-service/.env
+    ports:
+      - 8084:5000
+    networks:
+      - agro-lab-network
 
 volumes:
   minio_data:

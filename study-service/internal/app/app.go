@@ -6,7 +6,6 @@ import (
 	"net"
 
 	"study-service/internal/config"
-
 	desc "study-service/pkg/study_v1"
 
 	"google.golang.org/grpc"

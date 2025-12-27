@@ -1,4 +1,4 @@
-module local-lib/database
+module database
 
 go 1.24.6
 

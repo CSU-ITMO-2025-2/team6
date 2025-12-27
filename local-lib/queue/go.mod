@@ -1,4 +1,4 @@
-module local-lib/queue
+module queue
 
 go 1.24.6
 
