@@ -1,4 +1,4 @@
-#name: Docker Image CI
+#name: CI
 #
 #on:
 #  push:
@@ -7,17 +7,49 @@
 #    branches: [ "main" ]
 #
 #jobs:
-#
-#  build:
-#
+#  build-and-test:
 #    runs-on: ubuntu-latest
 #
-#    steps:
-#    - uses: actions/checkout@v4
-#    - name: Build the Docker image
-#      run: docker build . --file Dockerfile --tag my-image-name:$(date +%s)
+#    services:
+#      docker:
+#        image: docker:24-dind
+#        options: --privileged
 #
-name: CI
+#    steps:
+#      - name: Checkout
+#        uses: actions/checkout@v4
+#
+#      - name: Set up Docker
+#        uses: docker/setup-buildx-action@v3
+#
+#      - name: Build services
+#        run: docker compose build
+#
+#      - name: Start infrastructure
+#        run: docker compose up -d db minio nats
+#
+#      - name: Wait for DB
+#        run: |
+#          until docker compose exec -T db pg_isready -U postgres; do
+#            sleep 2
+#          done
+#
+#      - name: Run migrations
+#        run: docker compose up migrator
+#
+#      - name: Start services
+#        run: docker compose up -d
+#
+#      # ======= Go tests (пример) =======
+##      - name: Run study-service tests
+##        run: |
+##          docker compose exec -T study-service go test ./...
+##
+##      - name: Run main-service tests
+##        run: |
+##          docker compose exec -T main-service go test ./...
+
+name: Build and Push
 
 on:
   push:
@@ -26,13 +58,8 @@ on:
     branches: [ "main" ]
 
 jobs:
-  build-and-test:
+  build:
     runs-on: ubuntu-latest
-
-    services:
-      docker:
-        image: docker:24-dind
-        options: --privileged
 
     steps:
       - name: Checkout
@@ -41,32 +68,24 @@ jobs:
       - name: Set up Docker
         uses: docker/setup-buildx-action@v3
 
-      #      - name: Copy CI env
-      #        run: cp .env.ci .env
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          # password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build services
-        run: docker compose build
-
-      - name: Start infrastructure
-        run: docker compose up -d db minio nats
-
-      - name: Wait for DB
+      - name: Build and push main-service
         run: |
-          until docker compose exec -T db pg_isready -U postgres; do
-            sleep 2
-          done
+          docker build -t ghcr.io/${{ github.repository_owner }}/main-service:${{ github.sha }} -f main-service/Dockerfile .
+          docker push ghcr.io/${{ github.repository_owner }}/main-service:${{ github.sha }}
 
-      - name: Run migrations
-        run: docker compose up migrator
+      - name: Build and push study-service
+        run: |
+          docker build -t ghcr.io/${{ github.repository_owner }}/study-service:${{ github.sha }} -f study-service/Dockerfile ./study-service
+          docker push ghcr.io/${{ github.repository_owner }}/study-service:${{ github.sha }}
 
-      - name: Start services
-        run: docker compose up -d
-
-      # ======= Go tests (пример) =======
-#      - name: Run study-service tests
-#        run: |
-#          docker compose exec -T study-service go test ./...
-#
-#      - name: Run main-service tests
-#        run: |
-#          docker compose exec -T main-service go test ./...
+      - name: Build and push migrator
+        run: |
+          docker build -t ghcr.io/${{ github.repository_owner }}/migrator:${{ github.sha }} -f migrator/Dockerfile ./migrator
+          docker push ghcr.io/${{ github.repository_owner }}/migrator:${{ github.sha }}
