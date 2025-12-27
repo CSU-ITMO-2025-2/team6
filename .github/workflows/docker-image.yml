@@ -1,4 +1,23 @@
-name: Docker Image CI
+#name: Docker Image CI
+#
+#on:
+#  push:
+#    branches: [ "main" ]
+#  pull_request:
+#    branches: [ "main" ]
+#
+#jobs:
+#
+#  build:
+#
+#    runs-on: ubuntu-latest
+#
+#    steps:
+#    - uses: actions/checkout@v4
+#    - name: Build the Docker image
+#      run: docker build . --file Dockerfile --tag my-image-name:$(date +%s)
+#
+name: CI
 
 on:
   push:
@@ -7,12 +26,47 @@ on:
     branches: [ "main" ]
 
 jobs:
-
-  build:
-
+  build-and-test:
     runs-on: ubuntu-latest
 
+    services:
+      docker:
+        image: docker:24-dind
+        options: --privileged
+
     steps:
-    - uses: actions/checkout@v4
-    - name: Build the Docker image
-      run: docker build . --file Dockerfile --tag my-image-name:$(date +%s)
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v3
+
+      #      - name: Copy CI env
+      #        run: cp .env.ci .env
+
+      - name: Build services
+        run: docker compose build
+
+      - name: Start infrastructure
+        run: docker compose up -d db minio nats
+
+      - name: Wait for DB
+        run: |
+          until docker compose exec -T db pg_isready -U postgres; do
+            sleep 2
+          done
+
+      - name: Run migrations
+        run: docker compose up migrator
+
+      - name: Start services
+        run: docker compose up -d
+
+      # ======= Go tests (пример) =======
+#      - name: Run study-service tests
+#        run: |
+#          docker compose exec -T study-service go test ./...
+#
+#      - name: Run main-service tests
+#        run: |
+#          docker compose exec -T main-service go test ./...
