@@ -91,9 +91,9 @@ jobs:
           - name: ml-service
             context: ./ml-service
             dockerfile: ./ml-service/Dockerfile
-          - name: migrator
-            context: ./migrator
-            dockerfile: ./migrator/Dockerfile
+#          - name: migrator
+#            context: ./migrator
+#            dockerfile: ./migrator/Dockerfile
     steps:
       - name: Checkout
         uses: actions/checkout@v4
