@@ -14,10 +14,9 @@ import (
 func (i *Implementation) CreateStudy(ctx context.Context, req *desc.CreateStudyRequest) (*desc.CreateStudyResponse, error) {
 
 	switch req.Image.MimeType {
-	case "jpeg", "jpg", "png":
+	case "image/jpeg", "image/jpg", "image/png":
 	default:
 		return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("invalid file type: %s", req.Image.MimeType))
-
 	}
 
 	if len(req.Image.ChunkData) == 0 {
