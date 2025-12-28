@@ -14,7 +14,7 @@ import (
 func (i *Implementation) CreateStudy(ctx context.Context, req *desc.CreateStudyRequest) (*desc.CreateStudyResponse, error) {
 
 	switch req.Image.MimeType {
-	case "jpeg", "png":
+	case "jpeg", "jpg", "png":
 	default:
 		return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("invalid file type: %s", req.Image.MimeType))
 
