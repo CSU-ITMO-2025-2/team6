@@ -181,15 +181,30 @@ import base64
 from ultralytics import YOLO
 import numpy as np
 import logging
+from dotenv import load_dotenv
+
 
 # Логирование
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+def load_configuration():
+    """Загружает конфигурацию из .env файла или переменных окружения"""
+    load_dotenv()
+
+    config = {
+        'nats_url': os.getenv('NATS_URL', 'nats://nats:4222'),
+    }
+
+    print(f"Loaded configuration: {config}")
+
+    return config
 
 class ImageAnalysisService:
     def __init__(self, nats_url, model_path):
-        self.nats_url = nats_url
+        config = load_configuration()
+
+        self.nats_url = nats_url or config['nats_url']
         self.nc = None
         self.model = YOLO(model_path)
 
