@@ -43,7 +43,7 @@ func (i *Implementation) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID := uuid.New() // FIXME брать из контекста, когда добавиться авторизация
+	userID := uuid.MustParse("a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11") // FIXME брать из контекста, когда добавиться авторизация
 
 	st := &model.Study{
 		OwnerID: userID,
