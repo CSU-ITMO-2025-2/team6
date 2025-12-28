@@ -3,11 +3,9 @@
 source .env
 
 echo "Waiting for database to be ready..."
-#sleep 10
 
 # Формируем DSN для миграций
 export MIGRATION_DSN="postgres://$POSTGRES_USER:$POSTGRES_PASSWORD@$POSTGRES_ADDR/$POSTGRES_DB?sslmode=disable"
-#export MIGRATION_DSN="postgres://$POSTGRES_USER:$POSTGRES_PASSWORD@db:5432/$POSTGRES_DB?sslmode=disable"
 
 echo "Running migrations with DSN: postgres://$POSTGRES_USER:****@db:5432/$POSTGRES_DB?sslmode=disable"
 

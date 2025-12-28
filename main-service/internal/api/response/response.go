@@ -5,7 +5,6 @@ import (
 	"errors"
 	"net/http"
 
-	"main-service/internal/domain_error"
 	"main-service/internal/model"
 )
 
@@ -42,30 +41,12 @@ func HandleDomainError(w http.ResponseWriter, err error) {
 	Error(w, httpCode, code, msg)
 }
 
-//func MapDomainError(err error) (int, string, string) {
-//	switch {
-//	case errors.Is(err, model.ErrObjectNotFound):
-//		return http.StatusNotFound, "NOT_FOUND", "object not found"
-//
-//	case errors.Is(err, model.ErrObjectAlreadyExists):
-//		return http.StatusConflict, "ALREADY_EXISTS", "object already exists"
-//
-//	case errors.Is(err, model.ErrInvalidInput):
-//		return http.StatusBadRequest, "INVALID_INPUT", "invalid input"
-//
-//	default:
-//		return http.StatusInternalServerError, "INTERNAL_ERROR", "internal server error"
-//	}
-//}
-
 func MapDomainError(err error) (int, string, string) {
-	// 1. Поиск кастомных DomainError в цепочке unwrap
-	var dErr domain_error.DomainError
-	if errors.As(err, &dErr) {
-		return dErr.HTTPStatus(), dErr.Code(), dErr.Message()
-	}
+	//var dErr domain_error.DomainError
+	//if errors.As(err, &dErr) {
+	//	return dErr.HTTPStatus(), dErr.Code(), dErr.Message()
+	//}
 
-	// 2. Legacy domain errors
 	switch {
 	case errors.Is(err, model.ErrObjectNotFound):
 		return http.StatusNotFound, "NOT_FOUND", err.Error()

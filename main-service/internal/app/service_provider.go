@@ -148,7 +148,7 @@ func (s *serviceProvider) StudyClient() client.StudyClient {
 
 func (s *serviceProvider) StudyService(ctx context.Context) service.StudyService {
 	if s.studyService == nil {
-		s.userService = studyService.NewService(
+		s.studyService = studyService.NewService(
 			s.StudyClient(),
 		)
 	}
