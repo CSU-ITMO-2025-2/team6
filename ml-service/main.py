@@ -183,8 +183,6 @@ import numpy as np
 import logging
 from dotenv import load_dotenv
 
-
-# Логирование
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -193,24 +191,29 @@ def load_configuration():
     load_dotenv()
 
     config = {
-        'nats_url': os.getenv('NATS_URL', 'nats://nats:4222'),
+        'nats_url': os.getenv('NATS_URL', 'nats://nats-srv:4222'),
+        'model_path': os.getenv('MODEL_PATH', '/app/model/best.pt')
     }
 
     print(f"Loaded configuration: {config}")
-
     return config
 
 class ImageAnalysisService:
-    def __init__(self, nats_url, model_path):
+    def __init__(self, nats_url=None, model_path=None):
         config = load_configuration()
 
+        # Используем параметры или конфигурацию
         self.nats_url = nats_url or config['nats_url']
+        self.model_path = model_path or config['model_path']
+
         self.nc = None
-        self.model = YOLO(model_path)
+        self.model = YOLO(self.model_path)
 
         # Стримы
         self.request_subject = "core-task-ml.request"
         self.response_subject = "core-task-ml.response"
+
+        logger.info(f"Initialized with NATS: {self.nats_url}, Model: {self.model_path}")
 
     async def connect(self):
         """Подключение к NATS"""
@@ -238,7 +241,8 @@ class ImageAnalysisService:
         except KeyboardInterrupt:
             logger.info("Shutting down...")
         finally:
-            await self.nc.close()
+            if self.nc:
+                await self.nc.close()
 
     # ============================================================
     #                    PROCESS MESSAGE
@@ -252,13 +256,13 @@ class ImageAnalysisService:
             logger.info(f"Received image analysis request for study_id: {study_id}")
 
             if not image_data:
-                await self._send_error(self.response_subject, study_id, "no image data provided")
+                await self._send_error(study_id, "no image data provided")
                 return
 
             try:
                 image_bytes = base64.b64decode(image_data)
             except Exception as e:
-                await self._send_error(self.response_subject, study_id, f"invalid base64 image: {str(e)}")
+                await self._send_error(study_id, f"invalid base64 image: {str(e)}")
                 return
 
             result = await self.analyze_image(image_bytes)
@@ -278,8 +282,7 @@ class ImageAnalysisService:
 
         except Exception as e:
             logger.error(f"Error processing message: {str(e)}")
-
-            await self._send_error(self.response_subject, None, f"processing error: {str(e)}")
+            await self._send_error(None, f"processing error: {str(e)}")
 
     # ============================================================
     #                    ANALYZE IMAGE
@@ -341,13 +344,15 @@ class ImageAnalysisService:
     #                        ERROR RESPONSE
     # ============================================================
     async def _send_error(self, study_id, error_message):
+        """Отправка ошибки"""
         response = {
             "study_id": study_id,
             "type": "error",
             "score": 0,
             "error": error_message
         }
-        await self.nc.publish(self.response_subject, json.dumps(response).encode())
+        if self.nc:
+            await self.nc.publish(self.response_subject, json.dumps(response).encode())
         logger.info(f"Sent error response: {error_message}")
 
 
@@ -355,12 +360,9 @@ class ImageAnalysisService:
 #                       ENTRYPOINT
 # ============================================================
 async def main():
-    service = ImageAnalysisService(
-        nats_url="nats://nats:4222",
-        model_path="/app/model/best.pt"
-    )
+    # Используем конфигурацию из окружения
+    service = ImageAnalysisService()  # Без параметров - загрузит из конфигурации
     await service.run()
-
 
 if __name__ == "__main__":
     asyncio.run(main())
