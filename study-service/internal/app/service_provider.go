@@ -22,9 +22,9 @@ import (
 )
 
 type serviceProvider struct {
-	pgConfig    config.PGConfig
-	grpcConfig  config.GRPCConfig
-	minioConfig config.MinIOConfig
+	pgConfig   config.PGConfig
+	grpcConfig config.GRPCConfig
+	s3Config   config.S3Config
 
 	dbClient db.Client
 	queue    queue.Study
@@ -68,17 +68,17 @@ func (s *serviceProvider) GRPCConfig() config.GRPCConfig {
 	return s.grpcConfig
 }
 
-func (s *serviceProvider) MinioConfig() config.MinIOConfig {
-	if s.minioConfig == nil {
-		cfg, err := config.NewMinIOConfig()
+func (s *serviceProvider) S3Config() config.S3Config {
+	if s.s3Config == nil {
+		cfg, err := config.NewS3Config()
 		if err != nil {
 			log.Fatalf("failed to get grpc config: %s", err.Error())
 		}
 
-		s.minioConfig = cfg
+		s.s3Config = cfg
 	}
 
-	return s.minioConfig
+	return s.s3Config
 }
 
 func (s *serviceProvider) DBClient(ctx context.Context) db.Client {
@@ -128,11 +128,9 @@ func (s *serviceProvider) StudyRepository(ctx context.Context) repository.StudyR
 
 func (s *serviceProvider) Storage() repository.Storage {
 	if s.storage == nil {
-		s.storage = storage.NewStorage(
-			s.MinioConfig().Host(),
-			s.MinioConfig().User(),
-			s.MinioConfig().Password(),
-			s.MinioConfig().UseSSL())
+		s.storage, _ = storage.NewStorage(
+			s.S3Config(),
+		)
 	}
 
 	return s.storage

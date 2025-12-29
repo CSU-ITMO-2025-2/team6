@@ -6,71 +6,63 @@ import (
 )
 
 const (
-	minIOEnvHost      = "MINIO_HOST"
-	minIOEnvUser      = "MINIO_ROOT_USER"
-	minIOEnvPassword  = "MINIO_ROOT_PASSWORD"
-	minIOEnvUseSSL    = "MINIO_USE_SSL"
-	minIOEnvRemoteURL = "MINIO_REMOTE_URL"
+	s3EnvEndpoint  = "S3_ENDPOINT"
+	s3EnvAccessKey = "S3_ACCESS_KEY"
+	s3EnvSecretKey = "S3_SECRET_KEY"
+	s3EnvBucket    = "S3_BUCKET"
+	s3EnvUseSSL    = "S3_USE_SSL"
 )
 
-type MinIOConfig interface {
-	Host() string
-	User() string
-	Password() string
+type S3Config interface {
+	Endpoint() string
+	AccessKey() string
+	SecretKey() string
+	Bucket() string
 	UseSSL() bool
 }
 
-type minIOConfig struct {
-	host      string
-	user      string
-	password  string
+type s3Config struct {
+	endpoint  string
+	accessKey string
+	secretKey string
+	bucket    string
 	useSSL    bool
-	remoteURL string
 }
 
-func NewMinIOConfig() (MinIOConfig, error) {
-	host := os.Getenv(minIOEnvHost)
-	if len(host) == 0 {
-		return nil, errors.New("minIO config error: host not found")
-	}
-	user := os.Getenv(minIOEnvUser)
-	if len(user) == 0 {
-		return nil, errors.New("minIO config error: user not found")
-	}
-	pass := os.Getenv(minIOEnvPassword)
-	if len(pass) == 0 {
-		return nil, errors.New("minIO config error: password not found")
-	}
-	useSSL := os.Getenv(minIOEnvUseSSL) == "true"
-	if len(pass) == 0 {
-		return nil, errors.New("minIO config error: useSSL not found")
-	}
-	remoteURL := os.Getenv(minIOEnvRemoteURL)
-	if len(remoteURL) == 0 {
-		return nil, errors.New("minIO config error: remoteURL not found")
+func NewS3Config() (S3Config, error) {
+	endpoint := os.Getenv(s3EnvEndpoint)
+	if endpoint == "" {
+		return nil, errors.New("s3 config error: endpoint not found")
 	}
 
-	return &minIOConfig{
-		host:      host,
-		user:      user,
-		password:  pass,
+	accessKey := os.Getenv(s3EnvAccessKey)
+	if accessKey == "" {
+		return nil, errors.New("s3 config error: access key not found")
+	}
+
+	secretKey := os.Getenv(s3EnvSecretKey)
+	if secretKey == "" {
+		return nil, errors.New("s3 config error: secret key not found")
+	}
+
+	bucket := os.Getenv(s3EnvBucket)
+	if bucket == "" {
+		return nil, errors.New("s3 config error: bucket not found")
+	}
+
+	useSSL := os.Getenv(s3EnvUseSSL) == "true"
+
+	return &s3Config{
+		endpoint:  endpoint,
+		accessKey: accessKey,
+		secretKey: secretKey,
+		bucket:    bucket,
 		useSSL:    useSSL,
-		remoteURL: remoteURL,
 	}, nil
 }
 
-func (cfg *minIOConfig) Host() string {
-	return cfg.host
-}
-
-func (cfg *minIOConfig) User() string {
-	return cfg.user
-}
-
-func (cfg *minIOConfig) Password() string {
-	return cfg.password
-}
-
-func (cfg *minIOConfig) UseSSL() bool {
-	return cfg.useSSL
-}
+func (c *s3Config) Endpoint() string  { return c.endpoint }
+func (c *s3Config) AccessKey() string { return c.accessKey }
+func (c *s3Config) SecretKey() string { return c.secretKey }
+func (c *s3Config) Bucket() string    { return c.bucket }
+func (c *s3Config) UseSSL() bool      { return c.useSSL }

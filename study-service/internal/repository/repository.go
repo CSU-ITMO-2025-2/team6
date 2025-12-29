@@ -22,5 +22,5 @@ type Storage interface {
 	Upload(ctx context.Context, bucketName, objectName uuid.UUID, data []byte, contentType string) error
 	Download(ctx context.Context, bucketName, objectName string) (io.Reader, error)
 	Delete(ctx context.Context, bucketName, objectName string) error
-	GetURL(bucketName, objectName string) string
+	//GetURL(bucketName, objectName string) string
 }

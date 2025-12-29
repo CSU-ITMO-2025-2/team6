@@ -5,6 +5,7 @@ import (
 	"context"
 	"io"
 
+	"study-service/internal/config"
 	"study-service/internal/repository"
 
 	"github.com/google/uuid"
@@ -13,25 +14,28 @@ import (
 )
 
 type storage struct {
-	client   *minio.Client
-	endpoint string
+	client *minio.Client
+	bucket string
 }
 
-func NewStorage(endpoint, accessKey, secretKey string, useSSL bool) repository.Storage {
-	client, err := minio.New(endpoint, &minio.Options{
-		Creds:  credentials.NewStaticV4(accessKey, secretKey, ""),
-		Secure: useSSL,
+func NewStorage(cfg config.S3Config) (repository.Storage, error) {
+	client, err := minio.New(cfg.Endpoint(), &minio.Options{
+		Creds: credentials.NewStaticV4(
+			cfg.AccessKey(),
+			cfg.SecretKey(),
+			"",
+		),
+		Secure: cfg.UseSSL(),
 	})
 	if err != nil {
-		return nil
+		return nil, err
 	}
 
 	return &storage{
-		client:   client,
-		endpoint: endpoint,
-	}
+		client: client,
+		bucket: cfg.Bucket(),
+	}, nil
 }
-
 func (s *storage) Upload(ctx context.Context, bucketName, objectName uuid.UUID, data []byte, contentType string) error {
 	reader := bytes.NewReader(data)
 
@@ -64,10 +68,10 @@ func (s *storage) Delete(ctx context.Context, bucketName, objectName string) err
 	return s.client.RemoveObject(ctx, bucketName, objectName, minio.RemoveObjectOptions{})
 }
 
-func (s *storage) GetURL(bucketName, objectName string) string {
-	// Для публичного доступа или через presigned URL
-	return s.endpoint + "/" + bucketName + "/" + objectName
-}
+//func (s *storage) GetURL(bucketName, objectName string) string {
+//	// Для публичного доступа или через presigned URL
+//	return s.endpoint + "/" + bucketName + "/" + objectName
+//}
 
 //func (s *storage) CreateOne(userID string, file helpers.FileDataType) (string, string, error) {
 //	objectID := uuid.New().String()
